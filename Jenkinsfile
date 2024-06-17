@@ -10,6 +10,7 @@ pipeline {
         SCA_TOOL = 'safety'
         SAST_TOOL = 'bandit'
         DAST_TOOL = 'owasp/zap2docker-stable'
+        SAFETY_CONFIG_DIR = "${env.WORKSPACE}/.safety" // Add this line
     }
 
     stages {
@@ -18,6 +19,8 @@ pipeline {
                 script {
                     // Ensure the scan report directory exists
                     sh "mkdir -p ${SCAN_REPORT_DIR}"
+                    // Ensure the safety config directory exists
+                    sh "mkdir -p ${SAFETY_CONFIG_DIR}"
                 }
             }
         }
