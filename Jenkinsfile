@@ -35,18 +35,21 @@ pipeline {
                 }
             }
         }
- 
-        stage('Deploy') {
+ environment {
+        DOCKER_CREDENTIALS_ID = 'your-docker-credentials-id'
+    }
+    stages {
+        stage('Build and Push') {
             steps {
                 script {
-                    withCredentials([usernamePassword(credentialsId: 'dockerhub', passwordVariable: 'dhpass', usernameVariable: 'dhuser')]) {
-                        sh 'docker login -u ${dhuser} -p ${dhpass}'
-                        sh 'docker push rupokify/python-jenkins-testone:latest'
+                    docker.withRegistry('https://registry.hub.docker.com', DOCKER_CREDENTIALS_ID) {
+                        def image = docker.build('rupokify/python-jenkins-testone:latest')
+                        image.push()
                     }
                 }
             }
         }
- 
+    }
         stage('DAST') {
             steps {
                 script {
