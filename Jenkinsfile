@@ -20,9 +20,9 @@ pipeline {
                 sh 'pytest testRoutes.py'
             }
         }
-   stage('SAST') {
+   stage('Safety Check') {
             steps {
-                sh 'safety check'
+                sh 'source venv/bin/activate && safety check' // Run safety check
             }
         }
  
