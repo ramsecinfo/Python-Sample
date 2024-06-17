@@ -43,16 +43,30 @@ pipeline {
         }
     }
  
-        stage('Deploy') {
+         environment {
+        DOCKER_CREDENTIALS_ID = 'docker-hub-credentials' // ID of Docker Hub credentials in Jenkins
+        IMAGE_NAME = 'rupokify/python-jenkins-testone'
+    }
+
+    stages {
+        stage('Build Docker Image') {
             steps {
                 script {
-                    withCredentials([usernamePassword(credentialsId: 'dockerhub', passwordVariable: 'dhpass', usernameVariable: 'dhuser')]) {
-                        sh 'docker login -u ${dhuser} -p ${dhpass}'
-                        sh 'docker push rupokify/python-jenkins-testone'
+                    sh 'docker build -t ${IMAGE_NAME} .'
+                }
+            }
+        }
+        stage('Push Docker Image') {
+            steps {
+                script {
+                    withCredentials([usernamePassword(credentialsId: "${DOCKER_CREDENTIALS_ID}", usernameVariable: 'DOCKER_USERNAME', passwordVariable: 'DOCKER_PASSWORD')]) {
+                        sh 'docker login -u $DOCKER_USERNAME -p $DOCKER_PASSWORD'
+                        sh 'docker push ${IMAGE_NAME}'
                     }
                 }
             }
         }
+    }
  
         stage('DAST') {
             steps {
