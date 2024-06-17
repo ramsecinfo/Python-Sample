@@ -21,12 +21,6 @@ pipeline {
             }
         }
  
-        stage('SCA') {
-            steps {
-                dependencyCheck additionalArguments: '', odcInstallation: 'OWASP-Dependency-Scan'
-                dependencyCheckPublisher pattern: '**/dependency-check-report.xml'
-            }
-        }
  
         stage('SAST') {
             steps {
@@ -34,7 +28,13 @@ pipeline {
                 sh 'allowfailure:true'
             }
         }
- 
+     
+   stage('SCA') {
+            steps {
+                dependencyCheck additionalArguments: '', odcInstallation: 'OWASP-Dependency-Scan'
+                dependencyCheckPublisher pattern: '**/dependency-check-report.xml'
+            }
+        }
         stage('Build') {
             steps {
                 script {
