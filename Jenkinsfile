@@ -21,17 +21,17 @@ pipeline {
             }
         }
  
-        stage('SAST') {
-            steps {
-                sh 'safety check'
-                sh 'allowfailure:true'
-            }
-        }
- 
         stage('SCA') {
             steps {
                 dependencyCheck additionalArguments: '', odcInstallation: 'OWASP-Dependency-Scan'
                 dependencyCheckPublisher pattern: '**/dependency-check-report.xml'
+            }
+        }
+ 
+        stage('SAST') {
+            steps {
+                sh 'safety check'
+                sh 'allowfailure:true'
             }
         }
  
