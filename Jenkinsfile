@@ -23,7 +23,7 @@ pipeline {
  
         stage('SAST') {
             steps {
-                sh 'safety check', allowfailure:true
+                sh 'safety check', allowfailure:'true'
             }
         }
  
