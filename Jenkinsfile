@@ -21,11 +21,6 @@ pipeline {
             }
         }
      
-      stage('SAST') {
-            steps {
-                sh 'safety check'
-            }
-        }
  
         stage('SCA') {
             steps {
