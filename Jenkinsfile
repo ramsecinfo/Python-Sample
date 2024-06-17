@@ -47,10 +47,8 @@ pipeline {
         stage('SAST - Static Application Security Testing') {
             steps {
                 script {
-                    // Ensure the scan report directory exists
-                    sh "mkdir -p ${SCAN_REPORT_DIR}"
-                    
                     // Run bandit to find common security issues in Python code
+                    // Use || true to always return a success code
                     sh """
                         ${SAST_TOOL} -r . -f json -o ${SCAN_REPORT_DIR}/bandit_report.json || true
                     """
