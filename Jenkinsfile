@@ -29,6 +29,14 @@ pipeline {
             }
         }
      
+       stage('SAST') {
+            steps {
+                sh 'safety check'
+                
+            }
+        }
+
+
         stage('Build') {
             steps {
                 script {
