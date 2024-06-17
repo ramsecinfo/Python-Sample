@@ -5,7 +5,7 @@ pipeline {
     stages {
         stage('Checkout') {
             steps {
-                git branch: 'master', credentialsId: 'github', url: 'https://github.com/ramsecinfo/Python-Sample.git'
+                git branch: 'main', credentialsId: 'github', url: 'https://github.com/ramsecinfo/Python-Sample.git'
             }
         }
  
@@ -20,7 +20,8 @@ pipeline {
                 sh 'pytest testRoutes.py'
             }
         }
-     
+ 
+
  
         stage('SCA') {
             steps {
@@ -29,7 +30,7 @@ pipeline {
             }
         }
  
-        stages {
+ stages {
         stage('Build Docker Image') {
             steps {
                 script {
@@ -43,7 +44,7 @@ pipeline {
         }
     }
  
-  stage('Deploy') {
+        stage('Deploy') {
             steps {
                 script {
                     withCredentials([usernamePassword(credentialsId: 'dockerhub', passwordVariable: 'dhpass', usernameVariable: 'dhuser')]) {
@@ -53,8 +54,6 @@ pipeline {
                 }
             }
         }
- 
-
  
         stage('DAST') {
             steps {
