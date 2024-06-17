@@ -21,13 +21,6 @@ pipeline {
             }
         }
  
- 
-        stage('SAST') {
-            steps {
-                sh 'safety check'
-                sh 'allowfailure:true'
-            }
-        }
      
    stage('SCA') {
             steps {
