@@ -23,7 +23,7 @@ pipeline {
  
         stage('SAST') {
             steps {
-                sh 'safety check'
+                sh "docker run -v \$(pwd):/src --rm hysnsec/bandit -r /src -f json -o /src/bandit-output.json"
             }
         }
  
