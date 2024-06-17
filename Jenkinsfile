@@ -46,6 +46,8 @@ pipeline {
                     // Run safety check for known vulnerabilities in dependencies
                     // Ensure SAFETY_CONFIG_DIR is used by the safety tool
                     withEnv(["SAFETY_CONFIG_DIR=${SAFETY_CONFIG_DIR}"]) {
+                        // Ensure the scan report directory exists before running safety check
+                        sh "mkdir -p ${SCAN_REPORT_DIR}"
                         sh "./venv/bin/${SCA_TOOL} check -r requirements.txt --json > ${SCAN_REPORT_DIR}/safety_report.json"
                     }
                 }
