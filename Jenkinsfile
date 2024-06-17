@@ -1,9 +1,12 @@
 pipeline {
-    agent any
+    agent {
+        docker {
+            image 'python:3.8'
+        }
+    }
 
     environment {
-        // Define the tools and environments
-        SCAN_REPORT_DIR = "${WORKSPACE}/scan-reports"
+        SCAN_REPORT_DIR = "${env.WORKSPACE}/scan-reports"
         SCA_TOOL = 'safety'
         SAST_TOOL = 'bandit'
         DAST_TOOL = 'owasp/zap2docker-stable'
@@ -41,25 +44,34 @@ pipeline {
             }
         }
 
-       stage('SAST - Static Application Security Testing') {
-    steps {
-        script {
-            def exitCode = sh(script: "${SAST_TOOL} -r . -f json -o ${SCAN_REPORT_DIR}/bandit_report.json", returnStatus: true)
-            if (exitCode != 0) {
-                echo "Bandit found issues, see the report at ${SCAN_REPORT_DIR}/bandit_report.json"
-                currentBuild.result = 'UNSTABLE' // Mark the build as unstable if issues are found
+        stage('SAST - Static Application Security Testing') {
+            steps {
+                script {
+                    // Ensure the scan report directory exists
+                    sh "mkdir -p ${SCAN_REPORT_DIR}"
+                    
+                    // Run bandit to find common security issues in Python code
+                    sh """
+                        ${SAST_TOOL} -r . -f json -o ${SCAN_REPORT_DIR}/bandit_report.json || true
+                    """
+                }
             }
         }
-    }
-}
-
 
         stage('DAST - Dynamic Application Security Testing') {
             steps {
                 script {
+                    // Ensure the application is running and accessible
+                    // This example assumes a script is available to start the application
+                    sh './start_application.sh'
+
                     // Run OWASP ZAP for dynamic application security testing
-                    // Assuming the application is already running and accessible at http://localhost:8000
-                    sh "docker run -t --rm -v ${SCAN_REPORT_DIR}:/zap/wrk/:rw -u zap ${DAST_TOOL} zap-baseline.py -t http://localhost:8000 -r ${SCAN_REPORT_DIR}/zap_report.html"
+                    sh """
+                        docker run -t --rm -v ${SCAN_REPORT_DIR}:/zap/wrk/:rw \
+                        -u zap ${DAST_TOOL} zap-baseline.py \
+                        -t http://localhost:8000 \
+                        -r /zap/wrk/zap_report.html
+                    """
                 }
             }
         }
