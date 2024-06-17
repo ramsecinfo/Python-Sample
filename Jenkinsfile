@@ -20,11 +20,21 @@ pipeline {
                 sh 'pytest testRoutes.py'
             }
         }
-     stage('SAST') {
+     
+     stages {
+        stage('Setup') {
             steps {
-                sh 'safety check'
+                sh 'python -m venv venv' // Create virtual environment
+                sh 'source venv/bin/activate' // Activate virtual environment
+                sh 'pip install safety' // Install safety module
             }
         }
+        stage('Safety Check') {
+            steps {
+                sh 'source venv/bin/activate && safety check' // Run safety check
+            }
+        }
+    }
  
  
         stage('SCA') {
