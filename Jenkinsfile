@@ -20,10 +20,14 @@ pipeline {
                 sh 'pytest testRoutes.py'
             }
         }
- 
-        stage('SAST') {
+ stage("sast") {
             steps {
                 sh "docker run -v \$(pwd):/src --rm hysnsec/bandit -r /src -f json -o /src/bandit-output.json"
+            }
+            post {
+                always {
+                    archiveArtifacts artifacts: 'bandit-output.json', fingerprint: true
+                }
             }
         }
  
