@@ -22,7 +22,7 @@ pipeline {
         }
      stage('SAST') {
             steps {
-                sh 'safety'
+                sh 'safety check'
             }
         }
  
