@@ -10,7 +10,7 @@ pipeline {
         SCA_TOOL = 'safety'
         SAST_TOOL = 'bandit'
         DAST_TOOL = 'owasp/zap2docker-stable'
-        SAFETY_CONFIG_DIR = "${env.WORKSPACE}/.safety" // Add this line
+        SAFETY_CONFIG_DIR = "${env.WORKSPACE}/.safety" // Set the safety config directory to the workspace
     }
 
     stages {
@@ -44,7 +44,10 @@ pipeline {
             steps {
                 script {
                     // Run safety check for known vulnerabilities in dependencies
-                    sh "./venv/bin/${SCA_TOOL} check -r requirements.txt --json > ${SCAN_REPORT_DIR}/safety_report.json"
+                    // Ensure SAFETY_CONFIG_DIR is used by the safety tool
+                    withEnv(["SAFETY_CONFIG_DIR=${SAFETY_CONFIG_DIR}"]) {
+                        sh "./venv/bin/${SCA_TOOL} check -r requirements.txt --json > ${SCAN_REPORT_DIR}/safety_report.json"
+                    }
                 }
             }
         }
