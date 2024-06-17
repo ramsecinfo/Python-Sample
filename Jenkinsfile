@@ -29,13 +29,19 @@ pipeline {
             }
         }
  
-        stage('Build') {
+        stages {
+        stage('Build Docker Image') {
             steps {
                 script {
-                    sh 'sudo docker build -t username/docker-image-name .'
+                    // Ensure the Jenkins user has Docker permissions
+                    sh 'sudo usermod -aG docker jenkins'
+                    sh 'newgrp docker'
+                    // Build the Docker image
+                    sh 'docker build -t username/docker-image-name .'
                 }
             }
         }
+    }
  
         stage('Deploy') {
             steps {
