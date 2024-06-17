@@ -5,7 +5,7 @@ pipeline {
     stages {
         stage('Checkout') {
             steps {
-                git branch: 'main', credentialsId: 'github', url: '<a class="vglnk" href="https://github.com/username/your-repository-name.git" rel="nofollow"><span>https</span><span>://</span><span>github</span><span>.</span><span>com</span><span>/</span><span>username</span><span>/</span><span>your</span><span>-</span><span>repository</span><span>-</span><span>name</span><span>.</span><span>git</span></a>'
+                git branch: 'main', credentialsId: 'github', url: '<a class="vglnk" href="https://github.com/ramsecinfo/Python-Sample.git" rel="nofollow"><span>https</span><span>://</span><span>github</span><span>.</span><span>com</span><span>/</span><span>username</span><span>/</span><span>your</span><span>-</span><span>repository</span><span>-</span><span>name</span><span>.</span><span>git</span></a>'
             }
         }
  
