@@ -25,17 +25,71 @@ pipeline {
                 }
             }
         }
+environment {
+        DEPENDENCY_CHECK_HOME = '/path/to/dependency-check'
+        PATH = "${DEPENDENCY_CHECK_HOME}:${env.PATH}"
+        DEPENDENCY_CHECK_REPORT = 'dependency-check-report.html'
+        BANDIT_REPORT = 'bandit-report.html'
+        ZAP_HOME = '/path/to/zap' // Update with the actual path to ZAP
+        ZAP_REPORT = 'zap-report.html'
+    }
+
+    stages {
+        stage('Checkout Code') {
+            steps {
+                git 'https://github.com/your/repository.git'
+            }
+        }
+
+        stage('Install Dependencies') {
+            steps {
+                script {
+                    echo 'Installing dependencies...'
+                    sh 'pip install -r requirements.txt'
+                    sh 'pip install bandit'
+                    sh 'pip install safety'
+                }
+            }
+       pipeline {
+    agent any
+
+    environment {
+        DEPENDENCY_CHECK_REPORT = 'dependency-check-report/dependency-check-report.html'
+        BANDIT_REPORT = 'bandit-report.html'
+        ZAP_REPORT = 'zap-report.html'
+    }
+
+    stages {
+        stage('Checkout Code') {
+            steps {
+                git 'https://github.com/your/repository.git'
+            }
+        }
+
+        stage('Install Dependencies') {
+            steps {
+                script {
+                    echo 'Installing dependencies...'
+                    sh 'pip install -r requirements.txt'
+                    sh 'pip install bandit'
+                    sh 'pip install safety'
+                }
+            }
+        }
 
         stage('Static Code Analysis (SCA)') {
             steps {
                 script {
-                    echo 'Running OWASP Dependency-Check...'
-                    sh 'dependency-check --project "YourProject" --out .'
+                    echo 'Running OWASP Dependency-Check using Docker...'
+                    sh '''
+                    docker run --rm -v $(pwd):/src -v $(pwd)/dependency-check-report:/report owasp/dependency-check \
+                    --project "YourProject" --scan /src --format HTML --out /report
+                    '''
                 }
                 publishHTML(target: [
                     reportName: 'Dependency-Check Report',
-                    reportDir: '.',
-                    reportFiles: DEPENDENCY_CHECK_REPORT,
+                    reportDir: 'dependency-check-report',
+                    reportFiles: 'dependency-check-report.html',
                     keepAll: true,
                     alwaysLinkToLastBuild: true,
                     allowMissing: false
@@ -82,7 +136,7 @@ pipeline {
             steps {
                 script {
                     echo 'Running OWASP ZAP...'
-                    sh "${ZAP_HOME}/zap.sh -daemon -port 8080 -config api.disablekey=true"
+                    sh "docker run -d --name zap -u zap -p 8080:8080 owasp/zap2docker-stable zap.sh -daemon -port 8080 -config api.disablekey=true"
                     sleep 30 // Give ZAP time to start
 
                     echo 'Scanning the application...'
@@ -92,6 +146,9 @@ pipeline {
 
                     echo 'Generating ZAP report...'
                     sh "curl 'http://localhost:8080/OTHER/core/other/htmlreport/?' -o ${ZAP_REPORT}"
+
+                    echo 'Stopping ZAP...'
+                    sh "docker stop zap && docker rm zap"
                 }
                 publishHTML(target: [
                     reportName: 'OWASP ZAP Report',
@@ -111,3 +168,5 @@ pipeline {
         }
     }
 }
+
+         
