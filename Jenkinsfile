@@ -25,12 +25,14 @@ pipeline {
         stage('Install Dependencies') {
             steps {
                 script {
-                    // Install Python dependencies in user space
-                    sh 'pip install --user -r requirements.txt'
-                    // Install SCA tool in user space
-                    sh "pip install --user ${SCA_TOOL}"
-                    // Install SAST tool in user space
-                    sh "pip install --user ${SAST_TOOL}"
+                    // Create a virtual environment
+                    sh 'python -m venv venv'
+                    // Activate the virtual environment and install dependencies
+                    sh './venv/bin/pip install -r requirements.txt'
+                    // Install SCA tool in the virtual environment
+                    sh "./venv/bin/pip install ${SCA_TOOL}"
+                    // Install SAST tool in the virtual environment
+                    sh "./venv/bin/pip install ${SAST_TOOL}"
                 }
             }
         }
@@ -39,7 +41,7 @@ pipeline {
             steps {
                 script {
                     // Run safety check for known vulnerabilities in dependencies
-                    sh "~/.local/bin/${SCA_TOOL} check -r requirements.txt --json > ${SCAN_REPORT_DIR}/safety_report.json"
+                    sh "./venv/bin/${SCA_TOOL} check -r requirements.txt --json > ${SCAN_REPORT_DIR}/safety_report.json"
                 }
             }
         }
@@ -51,7 +53,7 @@ pipeline {
                     sh "mkdir -p ${SCAN_REPORT_DIR}"
                     
                     // Run bandit to find common security issues in Python code
-                    sh "~/.local/bin/${SAST_TOOL} -r . -f json -o ${SCAN_REPORT_DIR}/bandit_report.json || true"
+                    sh "./venv/bin/${SAST_TOOL} -r . -f json -o ${SCAN_REPORT_DIR}/bandit_report.json || true"
                 }
             }
         }
