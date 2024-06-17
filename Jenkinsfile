@@ -32,6 +32,7 @@ pipeline {
        stage('SAST') {
             steps {
                 sh 'safety check'
+                echo 'Moving to the next stage...'
                 
             }
         }
