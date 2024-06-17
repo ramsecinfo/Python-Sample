@@ -25,12 +25,12 @@ pipeline {
         stage('Install Dependencies') {
             steps {
                 script {
-                    // Install Python dependencies
-                    sh 'pip install -r requirements.txt'
-                    // Install SCA tool
-                    sh "pip install ${SCA_TOOL}"
-                    // Install SAST tool
-                    sh "pip install ${SAST_TOOL}"
+                    // Install Python dependencies in user space
+                    sh 'pip install --user -r requirements.txt'
+                    // Install SCA tool in user space
+                    sh "pip install --user ${SCA_TOOL}"
+                    // Install SAST tool in user space
+                    sh "pip install --user ${SAST_TOOL}"
                 }
             }
         }
@@ -39,7 +39,7 @@ pipeline {
             steps {
                 script {
                     // Run safety check for known vulnerabilities in dependencies
-                    sh "${SCA_TOOL} check -r requirements.txt --json > ${SCAN_REPORT_DIR}/safety_report.json"
+                    sh "~/.local/bin/${SCA_TOOL} check -r requirements.txt --json > ${SCAN_REPORT_DIR}/safety_report.json"
                 }
             }
         }
@@ -47,11 +47,11 @@ pipeline {
         stage('SAST - Static Application Security Testing') {
             steps {
                 script {
+                    // Ensure the scan report directory exists
+                    sh "mkdir -p ${SCAN_REPORT_DIR}"
+                    
                     // Run bandit to find common security issues in Python code
-                    // Use || true to always return a success code
-                    sh """
-                        ${SAST_TOOL} -r . -f json -o ${SCAN_REPORT_DIR}/bandit_report.json || true
-                    """
+                    sh "~/.local/bin/${SAST_TOOL} -r . -f json -o ${SCAN_REPORT_DIR}/bandit_report.json || true"
                 }
             }
         }
