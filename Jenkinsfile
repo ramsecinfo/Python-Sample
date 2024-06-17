@@ -41,14 +41,18 @@ pipeline {
             }
         }
 
-        stage('SAST - Static Application Security Testing') {
-            steps {
-                script {
-                    // Run bandit to find common security issues in Python code
-                    sh "${SAST_TOOL} -r . -f json -o ${SCAN_REPORT_DIR}/bandit_report.json"
-                }
+       stage('SAST - Static Application Security Testing') {
+    steps {
+        script {
+            def exitCode = sh(script: "${SAST_TOOL} -r . -f json -o ${SCAN_REPORT_DIR}/bandit_report.json", returnStatus: true)
+            if (exitCode != 0) {
+                echo "Bandit found issues, see the report at ${SCAN_REPORT_DIR}/bandit_report.json"
+                currentBuild.result = 'UNSTABLE' // Mark the build as unstable if issues are found
             }
         }
+    }
+}
+
 
         stage('DAST - Dynamic Application Security Testing') {
             steps {
