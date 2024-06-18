@@ -1,103 +1,102 @@
 pipeline {
-    agent {
-        docker {
-            image 'python:3.8'
-        }
+    agent any
+    tools { 
+        maven 'Maven' 
     }
-
-    environment {
-        SCAN_REPORT_DIR = "${env.WORKSPACE}/scan-reports"
-        SCA_TOOL = 'safety'
-        SAST_TOOL = 'bandit'
-        DAST_TOOL = 'owasp/zap2docker-stable'
-        SAFETY_CONFIG_DIR = "${env.WORKSPACE}/.safety" // Set the safety config directory to the workspace
-    }
-
     stages {
-        stage('Prepare') {
+        stage ('Initialize') {
             steps {
-                script {
-                    // Ensure the scan report directory exists
-                    sh "mkdir -p ${SCAN_REPORT_DIR}"
-                    // Ensure the safety config directory exists
-                    sh "mkdir -p ${SAFETY_CONFIG_DIR}"
-                }
+                sh '''
+                    echo "PATH = ${PATH}"
+                    echo "M2_HOME = ${M2_HOME}"
+                ''' 
             }
         }
-        
-        stage('Install Dependencies') {
-            steps {
-                script {
-                    // Create a virtual environment
-                    sh 'python -m venv venv'
-                    // Activate the virtual environment and install dependencies
-                    sh './venv/bin/pip install -r requirements.txt'
-                    // Install SCA tool in the virtual environment
-                    sh "./venv/bin/pip install ${SCA_TOOL}"
-                    // Install SAST tool in the virtual environment
-                    sh "./venv/bin/pip install ${SAST_TOOL}"
-                }
-            }
-        }
+	    
+	    stage ('Check-Git-Secrets') {
+		    steps {
+	        sh 'rm trufflehog || true'
+		sh 'docker pull gesellix/trufflehog'
+		sh 'docker run -t gesellix/trufflehog --json https://github.com/ramsecinfo/webapp.git> trufflehog'
+		sh 'cat trufflehog'
+	    }
+	    }
+	    
 
-        stage('SCA - Software Composition Analysis') {
+	  stage ('Build') {
             steps {
-                script {
-                    // Run safety check for known vulnerabilities in dependencies
-                    // Ensure SAFETY_CONFIG_DIR is used by the safety tool
-                    withEnv(["SAFETY_CONFIG_DIR=${SAFETY_CONFIG_DIR}"]) {
-                        // Ensure the scan report directory exists before running safety check
-                        sh "mkdir -p ${SCAN_REPORT_DIR}"
-                        sh "./venv/bin/${SCA_TOOL} check -r requirements.txt --json > ${SCAN_REPORT_DIR}/safety_report.json"
-                    }
-                }
+                sh 'mvn clean package'
             }
-        }
+        }    
+	    
+	stage ('Source-Composition-Analysis') {
+		steps {
+		     sh 'rm owasp-* || true'
+		     sh 'wget https://raw.githubusercontent.com/ramsecinfo/webapp/master/Jenkinsfile/owasp-dependency-check.sh'	
+		     sh 'chmod +x owasp-dependency-check.sh'
+		     sh 'bash owasp-dependency-check.sh'
+		     sh 'cat /var/lib/jenkins/OWASP-Dependency-Check/reports/dependency-check-report.xml'
+		}
+	}
 
-        stage('SAST - Static Application Security Testing') {
-            steps {
-                script {
-                    // Ensure the scan report directory exists
-                    sh "mkdir -p ${SCAN_REPORT_DIR}"
-                    
-                    // Run bandit to find common security issues in Python code
-                    sh "./venv/bin/${SAST_TOOL} -r . -f json -o ${SCAN_REPORT_DIR}/bandit_report.json || true"
-                }
-            }
-        }
-
-        stage('DAST - Dynamic Application Security Testing') {
-            steps {
-                script {
-                    // Ensure the application is running and accessible
-                    // This example assumes a script is available to start the application
-                    sh './start_application.sh'
-
-                    // Run OWASP ZAP for dynamic application security testing
-                    sh """
-                        docker run -t --rm -v ${SCAN_REPORT_DIR}:/zap/wrk/:rw \
-                        -u zap ${DAST_TOOL} zap-baseline.py \
-                        -t http://localhost:8000 \
-                        -r /zap/wrk/zap_report.html
-                    """
-                }
-            }
-        }
-        
-        stage('Archive Reports') {
-            steps {
-                script {
-                    // Archive the security scan reports
-                    archiveArtifacts artifacts: 'scan-reports/*', allowEmptyArchive: true
-                }
-            }
-        }
-    }
-
-    post {
-        always {
-            // Clean up the workspace
-            cleanWs()
-        }
+	stage ('SAST') {
+		steps {
+		withSonarQubeEnv('sonar') {
+			sh 'mvn sonar:sonar'
+			sh 'cat target/sonar/report-task.txt'
+		       }
+		}
+	}
+      
+	 
+	    stage ('Port Scan') {
+		    steps {
+			sh 'rm nmap* || true'
+			sh 'docker run --rm -v "$(pwd)":/data uzyexe/nmap -sS -sV -oX nmap 54.86.226.84'
+			sh 'cat nmap'
+		    }
+	    }
+	    
+	    stage ('DAST') {
+		  
+		    	steps {
+			    sshagent(['zap']) {
+				    sh 'ssh -o StrictHostKeyChecking=no ubuntu@3.85.77.1 "docker run -t owasp/zap2docker-stable zap-baseline.py -t http://54.86.226.84:8080/webapp/" || true'
+			    }
+			}
+		}    
+	
+	    stage ('Nikto Scan') {
+		    steps {
+			sh 'rm nikto-output.xml || true'
+			sh 'docker pull secfigo/nikto:latest'
+			sh 'docker run --user $(id -u):$(id -g) --rm -v $(pwd):/report -i secfigo/nikto:latest -h 54.86.226.84 -p 8080 -output /report/nikto-output.xml'
+			sh 'cat nikto-output.xml'   
+		    }
+	    }
+	    
+	    stage ('SSL Checks') {
+		    steps {
+			sh 'pip install sslyze==1.4.2'
+			sh 'python -m sslyze --regular 54.86.226.84:8080 --json_out sslyze-output.json'
+			sh 'cat sslyze-output.json'
+		    }
+	    }
+	    
+	    stage ('Upload Reports to Defect Dojo') {
+		    steps {
+			sh 'pip install requests'
+			sh 'wget https://raw.githubusercontent.com/ramsecinfo/webapp/master/Jenkinsfile/upload-results.py'
+			sh 'chmod +x upload-results.py'
+			sh 'python upload-results.py --host 3.81.3.77:80 --api_key 66879c160803596f132aff025fee9a170366f615 --engagement_id 4 --result_file trufflehog --username admin --scanner "SSL Labs Scan"'
+			sh 'python upload-results.py --host 3.81.3.77:80 --api_key 66879c160803596f132aff025fee9a170366f615 --engagement_id 4 --result_file /var/lib/jenkins/OWASP-Dependency-Check/reports/dependency-check-report.xml --username admin --scanner "Dependency Check Scan"'
+			sh 'python upload-results.py --host 3.81.3.77:80 --api_key 66879c160803596f132aff025fee9a170366f615 --engagement_id 4 --result_file nmap --username admin --scanner "Nmap Scan"'
+			sh 'python upload-results.py --host 3.81.3.77:80 --api_key 66879c160803596f132aff025fee9a170366f615 --engagement_id 4 --result_file sslyze-output.json --username admin --scanner "SSL Labs Scan"'
+			sh 'python upload-results.py --host 3.81.3.77:80 --api_key 66879c160803596f132aff025fee9a170366f615 --engagement_id 4 --result_file nikto-output.xml --username admin'
+			    
+		    }
+	    }
+	    
+	
     }
 }
